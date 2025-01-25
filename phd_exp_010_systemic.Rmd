@@ -1,0 +1,402 @@
+---
+title: "Experiment 010"
+subtitle: "Effect of Rapamycin Treatment on Survival to Systemic Infection with *P. rettgeri* "
+author: "by Barbara Black"
+date: "Last compiled on `r format(Sys.time(), '%d %B, %Y')`"
+output: 
+    html_document:
+      code_folding: hide
+      number_sections: true
+      toc: true
+      toc_float: true
+      toc_depth: 3
+      fig_caption: true
+      theme: united
+      css: style.css
+      highlight: zenburn
+editor_options: 
+  chunk_output_type: console
+---
+
+<style>
+
+/* Change font size of the title */
+h1.title {
+  font-size: 22px;
+}
+
+/* Define the frames */
+div.blue { background-color:#e6f0ff; border-radius: 1px; padding: 10px; }
+div.orange { background-color:#fff8dc; border-radius: 5px; padding: 20px; margin: 10px 0;}
+div.green { background-color:#00bbc6; border-radius: 5px; padding: 20px;
+  border: 1px solid #000; margin: 10px 0;}
+
+/* Headers */ 
+h1 { font-size: 18px; font-weight: bold;}
+h2 { font-size: 16px; font-weight: bold; margin: 10px 0;}
+h3 { font-size: 14px; font-weight: bold; margin: 10px 0;}
+
+/* Change font size of the table of contents */
+TOC { font-size: 12px; }
+</style>
+
+```{r chunk-setup}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, results = 'hide', dpi = 300)
+```
+
+# Background
+
+# Code {.tabset}
+
+## Functions
+
+```{r survival-functions}
+# function to change code chunk size in output
+# note: automatically applied when chunk runs
+def.chunk.hook = knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x = def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\n \\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+
+# function to turn $censored into 'character' across all files
+# note: some Benching files are exported with $censored as 'double'
+read_contents = function(file) {
+  df = read_csv(file.path(path, file))
+  #df = df %>%
+    #mutate(censored = as.character(censored))
+  return(df)
+}
+
+# function to check and correct miscounted deaths
+# note: use with grouped dataset and within apply()
+correct_status = function(row) {
+  status = row['status']
+  n = row['n']
+  censored = row['censored']
+  status = as.numeric(status)
+  n = as.numeric(n)
+  censored = as.numeric(censored)
+  if (status > n) {
+    return(n - censored)
+  } else {
+    return(status)
+  }
+}
+
+# function to extract table from mixed effects model (by David Duneau)
+extract_coxme_table = function (mod){
+    beta = fixef(mod)
+    nvar = length(beta)
+    nfrail = nrow(mod$var) - nvar
+    se = sqrt(diag(mod$var)[nfrail + 1:nvar])
+    z = round(beta/se, 2)
+    p = format(as.numeric(pchisq((beta/se)^2, 1,lower.tail = FALSE)), 4)
+    table = data.frame(cbind(beta,se,z,p))
+    return(table)
+}
+
+# function to extract and plot survival data (by David Duneau)
+ggplotprep2 <- function(x, times){
+  # spreading the survfit data frame into data frame per day 
+  d <- data.frame(condition=rep(names(x$strata), x$strata), time=x$time, survival=x$surv, upper=x$upper, lower=x$lower)
+  # function to add time point 0 
+  fillup0 <- function(s) rbind(c(condition=s, time=0, survival=1, upper=1, lower=1), d[d$condition==s, ], deparse.level = 0)
+  # function to determine the missing time points
+  indexes <- function(x, time) {
+    if(x%in%time) return(x)
+    return(time[which.min(abs(time[time<x]-x))])
+  }
+  # function to complete the missing time points
+  fillup <- function(s) {
+    d.temp <- d[d$condition==s, ]
+    time <- as.numeric(d.temp$time)
+    id <- sapply(times, indexes, time=time)
+    d.temp <- d.temp[match(id, time), ]
+    d.temp$time <- times
+    return(d.temp)
+  }
+  if(times[1]==0) d <- do.call("rbind", sapply(names(x$strata), fillup0, simplify=F))
+  d <- do.call("rbind", sapply(names(x$strata), fillup, simplify=F))
+  d <- data.frame(Condition=d$condition, Time=as.numeric(d$time), Survival=as.numeric(d$survival), Upper=as.numeric(d$upper), Lower=as.numeric(d$lower))
+  return(d)
+} 
+
+# additional functions (by David Duneau)
+grab_grob <- function(){
+  grid.echo()
+  grid.grab()
+}
+
+RIGHT = function(x,n){
+  substring(x,nchar(x)-n+1)
+}
+
+LEFT = function(x,n){
+  substring(x,1,nchar(x)-n+1)
+}
+
+r2.corr.mer <- function(m) {
+  lmfit <-  lm(model.response(model.frame(m)) ~ fitted(m))
+  summary(lmfit)$r.squared
+}
+
+logit2prob <- function(logit){
+  odds <- exp(logit)
+  prob <- odds / (1 + odds)
+  return(prob)
+}
+
+`%notin%` = Negate(`%in%`)
+```
+
+## Libraries
+
+```{r packages}
+library(openxlsx)
+library(survival)
+library(ggsurvfit)
+library(car)
+library(gtsummary)
+library(survminer)
+library(janitor)
+library(ggsci)
+library(ggtext)
+library(mltools)
+library(broom)
+library(coxme)
+library(formatR)
+library(tidyverse)
+library(cowplot)
+library(knitr)
+```
+
+## Themes | `ggplot()`
+
+```{r ggplot-survival-theme}
+SuperSmallfont= 10
+Smallfont= 12
+Mediumfont= 14
+Largefont= 14
+verylargefont = 16
+pointsize= 0.7
+linesize=0.35
+meansize = 1.5
+Margin=c(0,0,0,0)
+
+fontsizeaxes = 12
+fontsizeaxes2 = 10
+
+basic_theme_surv=
+  theme(aspect.ratio = 1,
+        panel.background = element_blank(),
+        plot.caption =element_text(size=SuperSmallfont,face="italic", hjust = 1.5),
+        plot.title = element_text(size=Mediumfont,face="bold", hjust = 0.5),
+        plot.subtitle = element_text(size=Smallfont, hjust = 0.5),
+        strip.text.x = element_markdown(size =Smallfont, colour = "black",face="italic",hjust = 0.5),
+        strip.text.y = element_markdown(size =Smallfont, colour = "black",face="italic",hjust = 0.5),
+        strip.background = element_rect(fill=NA, colour="black"),
+        strip.placement="outside",
+        axis.title.x = element_text(size=Mediumfont,colour="black"),
+        axis.title.y = element_text(size=Mediumfont,colour="black"), 
+        axis.line.x = element_line(colour="black",size=0.75),
+        axis.line.y = element_line(colour="black",size=0.75),
+        axis.ticks.x = element_line(size = 0.75),
+        axis.ticks.y = element_line(size = 0.75),
+        axis.text.x = element_text(size=Smallfont,colour="black"),
+        axis.text.y = element_text(size=Smallfont,colour="black"),
+        plot.margin = unit(Margin, "cm"),
+        legend.direction = "vertical", 
+        legend.box = "vertical",
+        legend.position = "right",
+        legend.key.height = unit(0.4, "cm"),
+        legend.key.width= unit(0.6, "cm"),
+        legend.title = element_text(face="italic",size=Smallfont), 
+        legend.key = element_rect(colour = 'white', fill = "white", linetype='dashed'),
+        legend.text = element_text(size=SuperSmallfont),
+        legend.background = element_rect(fill=NA))
+
+colours = palette.colors()
+```
+
+## Data Import
+
+```{r data-import}
+# set path and read data files
+path = here::here("data/input")
+
+data_files = list.files(path, 
+                        pattern = "*.csv")
+
+# standardise all columns as character variables across all data files
+data_list = data.frame(filename = data_files) %>% 
+  mutate(file_contents = map(filename, 
+                             ~ read_contents(.)))
+
+# unnest the data list into a single data frame
+data_raw = unnest(data_list, 
+                  cols = file_contents)
+
+# print the result
+print(data_raw)
+```
+
+## Data Processing 
+
+```{r data-wrangling-and-formatting}
+data = data_raw %>%
+  # Remove unnecessary variables
+  select(-filename) %>%
+  # Turn character variables into factor ones, except for `$Day_of_infection` and `$Time`
+  mutate(across(.cols = where(is.character) & !all_of(c("Day_of_infection", "Time")), 
+                .fns = as.factor),
+         Date_Time = paste(Day_of_infection, Time, sep = " "),
+         Date_Time = as.POSIXct(Date_Time, format = "%d/%m/%Y %H:%M:%S")) %>%
+  # Arrange rows by the values of `$date_time`
+  arrange(Date_Time) %>%
+  # Group dataset by factor variables
+  group_by(across(where(is.factor))) %>%
+  # Calculate time difference to create `$Time_to_death`
+  mutate(Start_time = first(Date_Time),
+         across(c(Start_time, Date_Time), ~as.POSIXct(., format = "%d/%m/%Y %H:%M:%S")),
+         Time_to_death = difftime(Date_Time, Start_time, units = "hours"),
+         Time_to_death = as.numeric(Time_to_death),
+         Time_to_death = case_when(Time_to_death > 0 & Time_to_death <= 8 ~ 8,
+                                   #Time_to_death > 2 & Time_to_death <= 4 ~ 4,
+                                   #Time_to_death > 4 & Time_to_death <= 8 ~ 8,
+                                   Time_to_death > 8 & Time_to_death <= 16 ~ 16,
+                                   Time_to_death > 16 & Time_to_death <= 24 ~ 24,
+                                   Time_to_death > 24 & Time_to_death <= 32 ~ 32,
+                                   Time_to_death > 32 & Time_to_death <= 40 ~ 40,
+                                   Time_to_death > 40 & Time_to_death <= 48 ~ 48,
+                                   Time_to_death > 48 & Time_to_death <= 56 ~ 56,
+                                   TRUE ~ Time_to_death)) %>%
+  # Remove unnecessary variables
+  select(-c(Start_time, Date_Time)) %>% 
+  # Generate row IDs
+  rowid_to_column()
+```
+
+```{r data-check-and-export}
+# Create dataset with initial sample size for each experimental group
+sample_size = data %>%
+  filter(Time_to_death == 0) %>% 
+  group_by(across(where(is.factor))) %>% 
+  summarise(Sample_size = Count)
+
+# Create dataset with total number of scored flies for each experimental group
+scored = data %>%
+  filter(Time_to_death > 0) %>% 
+  group_by(across(where(is.factor))) %>% 
+  summarise(Events = sum(Count))
+
+# Check for miscounted data by calculating the difference between sample size and total number of scored flies, and then searching for negative `$Final_count` values
+negative_values = left_join(sample_size, scored) %>% 
+  mutate(Final_count = Sample_size - Events) %>% 
+  filter(Final_count < 0)
+
+# Print experimental groups showing negative count values
+print(negative_values)
+
+# Export dataset as CSV file
+# Note: Dataset is not yet expanded
+write_csv(data, "data/output/exp_010_systemic.csv")
+```
+
+# Survival
+
+```{r data-expansion-and-survival, fig.dim=c(4, 4), fig.align='center', out.width="75%"}
+data_expanded = data %>%
+  # Remove original row IDs
+  select(-rowid) %>%
+  # Expand dataset by duplicating rows according to values from `$Count`
+  uncount(Count) %>%
+  # Generate new row IDs
+  rowid_to_column() 
+
+fit = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age,
+                   data = data_expanded)
+
+plot = ggplotprep2(fit, times = c(seq(0, 48, by = 8))) %>%
+  mutate(Condition = str_remove_all(Condition,"[a-zA-Z]*=")) %>%
+  separate(Condition, c("Treatment", "Age"), sep = ", ") %>% 
+  mutate(across(where(is.character), as.factor),
+         Treatment = fct_relevel(Treatment, rev),
+         Age = fct_relevel(Age, rev))
+
+ggplot(plot, aes(x = Time, y = Survival, colour = Treatment)) +
+  #facet_grid(~) +
+  geom_hline(yintercept = 0.5, linetype = "dotted") +
+  geom_line(aes(linetype = Age), linewidth = 1) +
+  geom_point(colour = "black", size = 1) +
+  scale_color_manual(values = colours[c(1,7)]) +
+  scale_linetype_manual(values = c("solid", "dashed")) +
+  labs(title = "Effect of rapamycin treatment \non survival to systemic \nP. rettgeri infection",
+       caption = "Note: Pooled sexes and genotypes") +
+  scale_y_continuous("Proportion of survivors",
+                     limits = c(0, 1),
+                     breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+  scale_x_continuous("Time (days post-infection)",
+                     breaks = c(seq(0, 48, by = 8))) +
+  basic_theme_surv
+```
+
+```{r survival-by-sex, fig.dim=c(5, 5), fig.align='center', out.width="75%"}
+fit_sex = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Sex,
+                   data = data_expanded)
+
+plot_sex = ggplotprep2(fit_sex, times = c(seq(0, 48, by = 8))) %>%
+  mutate(Condition = str_remove_all(Condition,"[a-zA-Z]*=")) %>%
+  separate(Condition, c("Treatment", "Age", "Sex"), sep = ", ") %>% 
+  mutate(across(where(is.character), as.factor),
+         Treatment = fct_relevel(Treatment, rev),
+         Age = fct_relevel(Age, rev))
+
+ggplot(plot_sex, aes(x = Time, y = Survival, colour = Treatment)) +
+  facet_grid(~Sex) +
+  geom_hline(yintercept = 0.5, linetype = "dotted") +
+  geom_line(aes(linetype = Age), linewidth = 1) +
+  geom_point(colour = "black", size = 1) +
+  scale_color_manual(values = colours[c(1,7)]) +
+  scale_linetype_manual(values = c("solid", "dashed")) +
+  labs(title = "Effect of rapamycin treatment on survival \nto systemic P. rettgeri infection \nin males and females",
+       caption = "Note: Pooled genotypes") +
+  scale_y_continuous("Proportion of survivors",
+                     limits = c(0, 1),
+                     breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+  scale_x_continuous("Time (days post-infection)",
+                     breaks = c(seq(0, 48, by = 8))) +
+  basic_theme_surv
+```
+
+```{r survival-by-sex-and-genotype, fig.dim=c(5, 5), fig.align='center', out.width="75%"}
+fit_genotype = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Sex + Line,
+                   data = data_expanded)
+
+plot_genotype = ggplotprep2(fit_genotype, times = c(seq(0, 48, by = 8))) %>%
+  mutate(Condition = str_remove_all(Condition,"[a-zA-Z]*=")) %>%
+  separate(Condition, c("Treatment", "Age", "Sex", "Line"), sep = ", ") %>% 
+  mutate(across(where(is.character), as.factor),
+         Treatment = fct_relevel(Treatment, rev),
+         Age = fct_relevel(Age, rev))
+
+ggplot(plot_genotype, aes(x = Time, y = Survival, colour = Treatment)) +
+  facet_grid(~Line~Sex) +
+  geom_hline(yintercept = 0.5, linetype = "dotted") +
+  geom_line(aes(linetype = Age), linewidth = 1) +
+  geom_point(colour = "black", size = 1) +
+  scale_color_manual(values = colours[c(1,7)]) +
+  scale_linetype_manual(values = c("solid", "dashed")) +
+  labs(title = "Effect of rapamycin treatment on survival \nto systemic P. rettgeri infection \nin males and females across genotypes") +
+       #caption = "") +
+  scale_y_continuous("Proportion of survivors",
+                     limits = c(0, 1),
+                     breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+  scale_x_continuous("Time (days post-infection)",
+                     breaks = c(seq(0, 48, by = 8))) +
+  basic_theme_surv
+```
+
+```{r session-info, echo = FALSE}
+sessionInfo()
+```

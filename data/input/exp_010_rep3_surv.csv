@@ -1,0 +1,74 @@
+Internal_replicate,Age,Treatment,Line,Sex,Bacteria,Vial_ID,Day_of_infection,Time,Count,Censor
+Replicate 3,7 days,Untreated,DGRP OX,Male,P. rettgeri,U,19/12/2024,14:45,24,0
+Replicate 3,7 days,Untreated,DGRP OX,Female,P. rettgeri,U,19/12/2024,14:45,26,0
+Replicate 3,7 days,Untreated,DGRP OX,Male,P. rettgeri,U,19/12/2024,17:45,1,1
+Replicate 3,7 days,Untreated,DGRP OX,Female,P. rettgeri,U,19/12/2024,17:45,1,1
+Replicate 3,7 days,Untreated,DGRP OX,Male,P. rettgeri,U,20/12/2024,13:00,6,1
+Replicate 3,7 days,Untreated,DGRP OX,Female,P. rettgeri,U,20/12/2024,13:00,6,1
+Replicate 3,7 days,Untreated,DGRP OX,Male,P. rettgeri,U,20/12/2024,18:00,1,1
+Replicate 3,7 days,Untreated,DGRP OX,Female,P. rettgeri,U,20/12/2024,18:00,5,1
+Replicate 3,7 days,Untreated,DGRP OX,Female,P. rettgeri,U,20/12/2024,18:00,1,0
+Replicate 3,7 days,Untreated,DGRP OX,Male,P. rettgeri,U,21/12/2024,13:00,13,1
+Replicate 3,7 days,Untreated,DGRP OX,Female,P. rettgeri,U,21/12/2024,13:00,9,1
+Replicate 3,7 days,Rapamycin,DGRP OX,Male,P. rettgeri,V,19/12/2024,15:25,25,0
+Replicate 3,7 days,Rapamycin,DGRP OX,Female,P. rettgeri,V,19/12/2024,15:25,25,0
+Replicate 3,7 days,Rapamycin,DGRP OX,Male,P. rettgeri,V,19/12/2024,17:45,3,1
+Replicate 3,7 days,Rapamycin,DGRP OX,Female,P. rettgeri,V,19/12/2024,17:45,0,1
+Replicate 3,7 days,Rapamycin,DGRP OX,Male,P. rettgeri,V,20/12/2024,13:00,12,1
+Replicate 3,7 days,Rapamycin,DGRP OX,Female,P. rettgeri,V,20/12/2024,13:00,5,1
+Replicate 3,7 days,Rapamycin,DGRP OX,Male,P. rettgeri,V,20/12/2024,18:00,2,1
+Replicate 3,7 days,Rapamycin,DGRP OX,Female,P. rettgeri,V,20/12/2024,18:00,3,1
+Replicate 3,7 days,Rapamycin,DGRP OX,Male,P. rettgeri,V,21/12/2024,13:00,2,1
+Replicate 3,7 days,Rapamycin,DGRP OX,Female,P. rettgeri,V,21/12/2024,13:00,11,1
+Replicate 3,35 days,Untreated,DGRP OX,Male,P. rettgeri,W,19/12/2024,16:45,25,0
+Replicate 3,35 days,Untreated,DGRP OX,Female,P. rettgeri,W,19/12/2024,16:45,25,0
+Replicate 3,35 days,Untreated,DGRP OX,Male,P. rettgeri,W,20/12/2024,13:15,11,1
+Replicate 3,35 days,Untreated,DGRP OX,Female,P. rettgeri,W,20/12/2024,13:15,5,1
+Replicate 3,35 days,Untreated,DGRP OX,Male,P. rettgeri,W,20/12/2024,18:00,4,1
+Replicate 3,35 days,Untreated,DGRP OX,Female,P. rettgeri,W,20/12/2024,18:00,7,1
+Replicate 3,35 days,Untreated,DGRP OX,Male,P. rettgeri,W,21/12/2024,13:00,3,1
+Replicate 3,35 days,Untreated,DGRP OX,Female,P. rettgeri,W,21/12/2024,13:00,2,1
+Replicate 3,35 days,Rapamycin,DGRP OX,Male,P. rettgeri,X,19/12/2024,16:00,26,0
+Replicate 3,35 days,Rapamycin,DGRP OX,Female,P. rettgeri,X,19/12/2024,16:00,25,0
+Replicate 3,35 days,Rapamycin,DGRP OX,Male,P. rettgeri,X,20/12/2024,13:15,20,1
+Replicate 3,35 days,Rapamycin,DGRP OX,Female,P. rettgeri,X,20/12/2024,13:15,15,1
+Replicate 3,35 days,Rapamycin,DGRP OX,Male,P. rettgeri,X,20/12/2024,18:00,6,1
+Replicate 3,35 days,Rapamycin,DGRP OX,Female,P. rettgeri,X,20/12/2024,18:00,5,1
+Replicate 3,35 days,Rapamycin,DGRP OX,Male,P. rettgeri,X,21/12/2024,13:00,0,1
+Replicate 3,35 days,Rapamycin,DGRP OX,Female,P. rettgeri,X,21/12/2024,13:00,4,1
+Replicate 3,7 days,Untreated,wDah,Male,P. rettgeri,Q,19/12/2024,12:30,25,0
+Replicate 3,7 days,Untreated,wDah,Female,P. rettgeri,Q,19/12/2024,12:30,25,0
+Replicate 3,7 days,Untreated,wDah,Male,P. rettgeri,Q,19/12/2024,16:00,6,1
+Replicate 3,7 days,Untreated,wDah,Female,P. rettgeri,Q,19/12/2024,16:00,2,1
+Replicate 3,7 days,Untreated,wDah,Male,P. rettgeri,Q,20/12/2024,13:00,7,1
+Replicate 3,7 days,Untreated,wDah,Female,P. rettgeri,Q,20/12/2024,13:00,12,1
+Replicate 3,7 days,Untreated,wDah,Male,P. rettgeri,Q,20/12/2024,18:00,12,1
+Replicate 3,7 days,Untreated,wDah,Female,P. rettgeri,Q,20/12/2024,18:00,8,1
+Replicate 3,7 days,Untreated,wDah,Male,P. rettgeri,Q,21/12/2024,13:00,0,1
+Replicate 3,7 days,Untreated,wDah,Female,P. rettgeri,Q,21/12/2024,13:00,0,1
+Replicate 3,7 days,Rapamycin,wDah,Male,P. rettgeri,R,19/12/2024,13:00,25,0
+Replicate 3,7 days,Rapamycin,wDah,Female,P. rettgeri,R,19/12/2024,13:00,25,0
+Replicate 3,7 days,Rapamycin,wDah,Male,P. rettgeri,R,19/12/2024,14:45,1,1
+Replicate 3,7 days,Rapamycin,wDah,Female,P. rettgeri,R,19/12/2024,14:45,0,1
+Replicate 3,7 days,Rapamycin,wDah,Male,P. rettgeri,R,20/12/2024,12:45,11,1
+Replicate 3,7 days,Rapamycin,wDah,Female,P. rettgeri,R,20/12/2024,12:45,6,1
+Replicate 3,7 days,Rapamycin,wDah,Male,P. rettgeri,R,20/12/2024,18:00,6,1
+Replicate 3,7 days,Rapamycin,wDah,Female,P. rettgeri,R,20/12/2024,18:00,7,1
+Replicate 3,7 days,Rapamycin,wDah,Male,P. rettgeri,R,21/12/2024,13:00,6,1
+Replicate 3,7 days,Rapamycin,wDah,Female,P. rettgeri,R,21/12/2024,13:00,11,1
+Replicate 3,35 days,Untreated,wDah,Male,P. rettgeri,S,19/12/2024,13:15,8,0
+Replicate 3,35 days,Untreated,wDah,Female,P. rettgeri,S,19/12/2024,13:15,5,0
+Replicate 3,35 days,Untreated,wDah,Male,P. rettgeri,S,19/12/2024,14:45,1,1
+Replicate 3,35 days,Untreated,wDah,Female,P. rettgeri,S,19/12/2024,14:45,1,1
+Replicate 3,35 days,Untreated,wDah,Male,P. rettgeri,S,20/12/2024,12:45,7,1
+Replicate 3,35 days,Untreated,wDah,Female,P. rettgeri,S,20/12/2024,12:45,2,1
+Replicate 3,35 days,Untreated,wDah,Male,P. rettgeri,S,20/12/2024,18:00,0,1
+Replicate 3,35 days,Untreated,wDah,Female,P. rettgeri,S,20/12/2024,18:00,2,1
+Replicate 3,35 days,Rapamycin,wDah,Male,P. rettgeri,T,19/12/2024,13:30,6,0
+Replicate 3,35 days,Rapamycin,wDah,Female,P. rettgeri,T,19/12/2024,13:30,3,0
+Replicate 3,35 days,Rapamycin,wDah,Male,P. rettgeri,T,19/12/2024,14:45,1,1
+Replicate 3,35 days,Rapamycin,wDah,Female,P. rettgeri,T,19/12/2024,14:45,0,1
+Replicate 3,35 days,Rapamycin,wDah,Male,P. rettgeri,T,20/12/2024,12:45,4,1
+Replicate 3,35 days,Rapamycin,wDah,Female,P. rettgeri,T,20/12/2024,12:45,2,1
+Replicate 3,35 days,Rapamycin,wDah,Male,P. rettgeri,T,20/12/2024,18:00,1,1
+Replicate 3,35 days,Rapamycin,wDah,Female,P. rettgeri,T,20/12/2024,18:00,1,1
