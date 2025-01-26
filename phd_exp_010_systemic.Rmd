@@ -190,7 +190,7 @@ fontsizeaxes2 = 10
 basic_theme_surv=
   theme(aspect.ratio = 1,
         panel.background = element_blank(),
-        plot.caption =element_text(size=SuperSmallfont,face="italic", hjust = 1.5),
+        plot.caption =element_text(size=SuperSmallfont,face="italic", hjust = 0.5),
         plot.title = element_text(size=Mediumfont,face="bold", hjust = 0.5),
         plot.subtitle = element_text(size=Smallfont, hjust = 0.5),
         strip.text.x = element_markdown(size =Smallfont, colour = "black",face="italic",hjust = 0.5),
@@ -315,11 +315,23 @@ data_expanded = data %>%
   rowid_to_column() 
 ```
 
-```{r survival-by-genotype, fig.dim=c(5, 5), fig.align='center', out.width="75%"}
+```{r plot-caption}
+num_observations = data_expanded %>% 
+  filter(Time_to_death == 0 & Censor == 0) %>% 
+  group_by(Line) %>% 
+  summarise(count = n(), .groups = "drop")
+
+plot_caption = num_observations %>% 
+  mutate(summary = paste(Line, "=", count)) %>% 
+  pull(summary) %>% 
+  paste(collapse = "; ")
+```
+
+```{r survival-by-genotype, fig.dim=c(6, 6), fig.align='center', out.width="75%"}
 fit_genotype = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Line,
                    data = data_expanded)
 
-plot_genotype = ggplotprep2(fit_genotype, times = c(seq(0, 48, by = 8))) %>%
+plot_genotype = ggplotprep2(fit_genotype, times = c(seq(0, 56, by = 8))) %>%
   mutate(Condition = str_remove_all(Condition,"[a-zA-Z]*=")) %>%
   separate(Condition, c("Treatment", "Age", "Line"), sep = ", ") %>% 
   mutate(across(where(is.character), as.factor),
@@ -329,26 +341,26 @@ plot_genotype = ggplotprep2(fit_genotype, times = c(seq(0, 48, by = 8))) %>%
 ggplot(plot_genotype, aes(x = Time, y = Survival, colour = Treatment)) +
   facet_grid(~Line) +
   geom_hline(yintercept = 0.5, linetype = "dotted") +
+  geom_vline(xintercept = 48, colour = "red", linetype = "dotted") +
   geom_line(aes(linetype = Age), linewidth = 1) +
   geom_point(colour = "black", size = 1) +
   scale_color_manual(values = colours[c(1,7)]) +
   scale_linetype_manual(values = c("solid", "dashed")) +
   labs(title = "Effect of rapamycin treatment on survival \nto systemic P. rettgeri infection \nacross genotypes",
-       caption = "Note: Pooled sexes") +
-       #caption = "") +
+       caption = paste("Number of observations (n) per genotype:", plot_caption)) +
   scale_y_continuous("Proportion of survivors",
                      limits = c(0, 1),
                      breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
   scale_x_continuous("Time (hours post-infection)",
-                     breaks = c(seq(0, 48, by = 8))) +
-  basic_theme_surv
+                     breaks = c(seq(0, 56, by = 8))) +
+  basic_theme_surv 
 ```
 
-```{r survival-by-genotype-and-replicates, fig.dim=c(6, 6), fig.align='center', out.width="75%"}
+```{r survival-by-genotype-and-replicates, fig.dim=c(7, 7), fig.align='center', out.width="75%"}
 fit_replicate = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Line + Internal_replicate,
                    data = data_expanded)
 
-plot_replicate = ggplotprep2(fit_replicate, times = c(seq(0, 48, by = 8))) %>%
+plot_replicate = ggplotprep2(fit_replicate, times = c(seq(0, 56, by = 8))) %>%
   mutate(Condition = str_remove_all(Condition,"[a-zA-Z]*=")) %>%
   separate(Condition, c("Treatment", "Age", "Line", "Internal_replicate"), sep = ", ") %>% 
   mutate(across(where(is.character), as.factor),
@@ -358,18 +370,18 @@ plot_replicate = ggplotprep2(fit_replicate, times = c(seq(0, 48, by = 8))) %>%
 ggplot(plot_replicate, aes(x = Time, y = Survival, colour = Treatment)) +
   facet_grid(~Internal_replicate~Line) +
   geom_hline(yintercept = 0.5, linetype = "dotted") +
+  geom_vline(xintercept = 48, colour = "red", linetype = "dotted") +
   geom_line(aes(linetype = Age), linewidth = 1) +
   geom_point(colour = "black", size = 1) +
   scale_color_manual(values = colours[c(1,7)]) +
   scale_linetype_manual(values = c("solid", "dashed")) +
   labs(title = "Effect of rapamycin treatment on survival \nto systemic P. rettgeri infection \nacross genotypes and replicates",
-       caption = "Note: Pooled sexes") +
-       #caption = "") +
+       caption = paste("Number of observations (n) per genotype:", plot_caption)) +
   scale_y_continuous("Proportion of survivors",
                      limits = c(0, 1),
                      breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
   scale_x_continuous("Time (hours post-infection)",
-                     breaks = c(seq(0, 48, by = 8))) +
+                     breaks = c(seq(0, 56, by = 8))) +
   basic_theme_surv +
   theme(strip.text.y = element_markdown(size = SuperSmallfont, 
                                         colour = "black",
@@ -377,11 +389,11 @@ ggplot(plot_replicate, aes(x = Time, y = Survival, colour = Treatment)) +
                                         hjust = 0.5))
 ```
 
-```{r survival-by-genotype-and-sex, fig.dim=c(5, 5), fig.align='center', out.width="75%"}
+```{r survival-by-genotype-and-sex, fig.dim=c(6, 6), fig.align='center', out.width="75%"}
 fit_sex = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Line + Sex,
                    data = data_expanded)
 
-plot_sex = ggplotprep2(fit_sex, times = c(seq(0, 48, by = 8))) %>%
+plot_sex = ggplotprep2(fit_sex, times = c(seq(0, 56, by = 8))) %>%
   mutate(Condition = str_remove_all(Condition,"[a-zA-Z]*=")) %>%
   separate(Condition, c("Treatment", "Age", "Line", "Sex"), sep = ", ") %>% 
   mutate(across(where(is.character), as.factor),
@@ -391,16 +403,18 @@ plot_sex = ggplotprep2(fit_sex, times = c(seq(0, 48, by = 8))) %>%
 ggplot(plot_sex, aes(x = Time, y = Survival, colour = Treatment)) +
   facet_grid(~Sex~Line) +
   geom_hline(yintercept = 0.5, linetype = "dotted") +
+  geom_vline(xintercept = 48, colour = "red", linetype = "dotted") +
   geom_line(aes(linetype = Age), linewidth = 1) +
   geom_point(colour = "black", size = 1) +
   scale_color_manual(values = colours[c(1,7)]) +
   scale_linetype_manual(values = c("solid", "dashed")) +
-  labs(title = "Effect of rapamycin treatment on survival \nto systemic P. rettgeri infection \nin males and females across genotypes") +
+  labs(title = "Effect of rapamycin treatment on survival \nto systemic P. rettgeri infection \nin males and females across genotypes",
+       caption = paste("Number of observations (n) per genotype:", plot_caption)) +
   scale_y_continuous("Proportion of survivors",
                      limits = c(0, 1),
                      breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
   scale_x_continuous("Time (hours post-infection)",
-                     breaks = c(seq(0, 48, by = 8))) +
+                     breaks = c(seq(0, 56, by = 8))) +
   basic_theme_surv
 ```
 
