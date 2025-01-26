@@ -44,6 +44,14 @@ TOC { font-size: 12px; }
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, results = 'hide', dpi = 300)
 ```
 
+```{r git-setup}
+# Initialise a local Git repo
+#usethis::use_git()
+
+# Connect local Git repo to GitHub
+#usethis::use_github()
+```
+
 # Background
 
 # Code {.tabset}
