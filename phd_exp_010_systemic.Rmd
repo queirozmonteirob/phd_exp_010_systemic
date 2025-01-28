@@ -440,7 +440,7 @@ ggplot(plot_sex, aes(x = Time, y = Survival, colour = Treatment)) +
   basic_theme_surv
 ```
 
-# Regression {.tabset}
+# Regression and Likelihood Ratio Tests {.tabset}
 
 ## Pooled Model Selection
 
