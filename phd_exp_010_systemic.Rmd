@@ -1,25 +1,28 @@
 ---
 title: "Experiment 010"
-subtitle: "Effect of Rapamycin Treatment on Survival to Systemic Infection with *P. rettgeri* "
 author: "by Barbara Black"
 date: "Last compiled on `r format(Sys.time(), '%d %B, %Y')`"
-output: 
-    html_document:
-      code_folding: hide
-      number_sections: true
-      toc: true
-      toc_float: true
-      toc_depth: 3
-      fig_caption: true
-      theme: united
-      css: style.css
-      highlight: zenburn
-editor_options: 
+output:
+  html_document:
+    code_folding: hide
+    number_sections: true
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    fig_caption: true
+    theme: united
+    css: style.css
+    highlight: zenburn
+  pdf_document:
+    toc: true
+    toc_depth: '3'
+subtitle: 'Effect of Rapamycin Treatment on Survival to Systemic Infection with *P.
+  rettgeri* '
+editor_options:
   chunk_output_type: console
 ---
 
 <style>
-
 /* Change font size of the title */
 h1.title {
   font-size: 22px;
@@ -312,7 +315,7 @@ print(negative_values)
 write_csv(data, "data/output/exp_010_systemic.csv")
 ```
 
-# Survival
+# Survival {.tabset}
 
 ```{r data-expansion, fig.dim=c(4, 4), fig.align='center', out.width="75%"}
 data_expanded = data %>%
@@ -323,7 +326,9 @@ data_expanded = data %>%
   # Generate new row IDs
   rowid_to_column() %>% 
   # Turn $Day_of_infection into factor
-  mutate(Day_of_infection = as.factor(Day_of_infection))
+  mutate(Day_of_infection = as.factor(Day_of_infection),
+         Treatment = fct_relevel(Treatment, rev),
+         Age = fct_relevel(Age, rev))
 ```
 
 ```{r plot-caption}
@@ -337,6 +342,8 @@ plot_caption = num_observations %>%
   pull(summary) %>% 
   paste(collapse = "; ")
 ```
+
+## Across Lines
 
 ```{r survival-by-genotype, fig.dim=c(6, 6), fig.align='center', out.width="75%"}
 fit_genotype = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Line,
@@ -366,6 +373,8 @@ ggplot(plot_genotype, aes(x = Time, y = Survival, colour = Treatment)) +
                      breaks = c(seq(0, 56, by = 8))) +
   basic_theme_surv 
 ```
+
+## Across Lines and Replicates
 
 ```{r survival-by-genotype-and-replicates, fig.dim=c(7, 7), fig.align='center', out.width="75%"}
 fit_replicate = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Line + Internal_replicate,
@@ -400,6 +409,8 @@ ggplot(plot_replicate, aes(x = Time, y = Survival, colour = Treatment)) +
                                         hjust = 0.5))
 ```
 
+## Across Lines and Sexes
+
 ```{r survival-by-genotype-and-sex, fig.dim=c(6, 6), fig.align='center', out.width="75%"}
 fit_sex = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Line + Sex,
                    data = data_expanded)
@@ -429,15 +440,11 @@ ggplot(plot_sex, aes(x = Time, y = Survival, colour = Treatment)) +
   basic_theme_surv
 ```
 
-```{r session-info, echo = FALSE}
-sessionInfo()
-```
-
 # Regression {.tabset}
 
-## Mixed Genotypes
+## Pooled Model Selection
 
-```{r, fig.dim=c(5,5), fig.align='center', out.width="50%"}
+```{r}
 model1 = coxme(Surv(Time_to_death, Censor) ~ 
                          Age + Treatment + Sex + Line + (1|Internal_replicate) + (1|Vial_ID), 
                        data = data_expanded)
@@ -445,69 +452,73 @@ summary(model1)
 
 
 
-
-
 model2 = coxme(Surv(Time_to_death, Censor) ~ 
                          Age + Treatment + Sex + Line + Treatment*Sex + (1|Internal_replicate) + (1|Vial_ID), 
                        data = data_expanded)
 summary(model2)
-test2 = anova(model1, model2)
-print(test2)
-
-
-
+test1 = anova(model1, model2)
+print(test1)
 
 
 model3 = coxme(Surv(Time_to_death, Censor) ~ 
                          Age + Treatment + Sex + Line + Treatment*Line + (1|Internal_replicate) + (1|Vial_ID), 
                        data = data_expanded)
 summary(model3)
-test3 = anova(model1, model3)
-print(test3)
-
-
-
+test2 = anova(model1, model3)
+print(test2)
 
 
 model4 = coxme(Surv(Time_to_death, Censor) ~ 
                          Age + Treatment + Sex + Line + Sex*Line + (1|Internal_replicate) + (1|Vial_ID), 
                        data = data_expanded)
 summary(model4)
-test4 = anova(model1, model4)
-print(test4)
-
-
-
+test3 = anova(model1, model4)
+print(test3)
 
 
 best_model = model4
+model_formula = str_replace_all(deparse(formula(best_model), 
+                                        width.cutoff = 500), 
+                                c("_" = "\\\\_"))  
+```
 
+<div align="center">
+$`r model_formula`$
 
-
-
-
+<div class = "row">
+<div class = "col-md-6">
+```{r, results='hold'}
 coxme_table = extract_coxme_table(best_model)
 coxme_table$beta_lower = confint(best_model)[,1]
 coxme_table$beta_upper = confint(best_model)[,2]
 
-coxme_table = rownames_to_column(coxme_table, "term")
+coxme_table = rownames_to_column(coxme_table, "Parameter")
 coxme_table = coxme_table %>%
-  mutate(across(beta:beta_upper, as.numeric)) %>%
-  mutate(term = as.factor(term))
-
-forest_plot = coxme_table %>%
-  add_row(term = "baseline",
+  mutate(across(beta:beta_upper, as.numeric)) %>% 
+  add_row(Parameter = "Baseline",
           beta = 0,
           se = 0,
           z = 0,
           p = 0,
           beta_lower = 0,
           beta_upper = 0) %>%
-  mutate(term = term %>%
-           fct_relevel("baseline"))
+  mutate(Parameter = as_factor(Parameter) %>%
+           fct_relevel("Baseline"))
 
-ggplot(forest_plot,
-        aes(x = term,
+tbl_regression(best_model,
+                          exponentiate = FALSE) %>%
+  modify_header(update = c(estimate ~ "**log(HR)**",
+                           label ~ "**Parameter**")) %>%
+  italicize_levels() %>% 
+  as_flex_table() %>% 
+  flextable::set_table_properties(width = .5)
+```
+</div>
+
+<div class = "col-sm-6">
+```{r, results='hold', fig.dim=c(4,6), out.width="80%"}
+model_plot = ggplot(coxme_table,
+        aes(x = Parameter,
             y = beta)) +
    geom_errorbar(aes(ymin = beta_lower,
                      ymax = beta_upper),
@@ -517,14 +528,19 @@ ggplot(forest_plot,
                  show.legend = FALSE) +
    geom_point(stat = "identity",
               show.legend = FALSE,
-              size = 1.5) +
+              size = 1.5,
+              #position = position_dodge(0.2)
+              ) +
    geom_hline(yintercept = 0,
               colour = "red",
               linetype = 4) +
    scale_color_manual(values = c("red","blue","green","orange","black")) +
+   scale_x_discrete(expand = c(0.1, 0)) +
    scale_y_continuous("log(HR) (95 % CI)<br/>relative to respective<br/>baseline level",   
                         breaks = c(seq(-5, 5, by = 1))) +
-   coord_cartesian(ylim = c(-1, 1), expand = TRUE, clip = "on") +
+   coord_cartesian(ylim = c(-2, 2), 
+                   expand = TRUE, 
+                   clip = "on") +
    xlab("") +                                                                    
    theme_cowplot() +
    theme(axis.title.y = ggtext::element_markdown(),
@@ -532,19 +548,210 @@ ggplot(forest_plot,
                                     hjust = 1,
                                     size = 14),
          aspect.ratio = 2)    
+
+print(model_plot)
+```
+</div>
+</div>
+
+## *wDah* Model Selection
+
+```{r}
+data_wdah = data_expanded %>% 
+  filter(Line =="wDah")
+
+model1 = coxme(Surv(Time_to_death, Censor) ~ 
+                         Age + Treatment + Sex + (1|Internal_replicate) + (1|Vial_ID), 
+                       data = data_wdah)
+summary(model1) 
+
+
+
+model2 = coxme(Surv(Time_to_death, Censor) ~ 
+                         Age + Treatment + Sex + Treatment*Sex + (1|Internal_replicate) + (1|Vial_ID), 
+                       data = data_wdah)
+summary(model2)
+test1 = anova(model1, model2)
+print(test1)
+
+
+best_model = model1
+model_formula = str_replace_all(deparse(formula(best_model), 
+                                        width.cutoff = 500), 
+                                c("_" = "\\\\_"))  
 ```
 
-```{r, results='hold'}
-# regression table
-coxme_gt = tbl_regression(best_model,
-                          exponentiate = FALSE)
-# regression formula
-best_formula = formula(best_model)
+<div align="center">
+$`r model_formula`$
 
-coxme_gt %>%
+<div class = "row">
+<div class = "col-md-6">
+```{r, results='hold'}
+coxme_table = extract_coxme_table(best_model)
+coxme_table$beta_lower = confint(best_model)[,1]
+coxme_table$beta_upper = confint(best_model)[,2]
+
+coxme_table = rownames_to_column(coxme_table, "Parameter")
+coxme_table = coxme_table %>%
+  mutate(across(beta:beta_upper, as.numeric)) %>% 
+  add_row(Parameter = "Baseline",
+          beta = 0,
+          se = 0,
+          z = 0,
+          p = 0,
+          beta_lower = 0,
+          beta_upper = 0) %>%
+  mutate(Parameter = as_factor(Parameter) %>%
+           fct_relevel("Baseline"))
+
+tbl_regression(best_model,
+                          exponentiate = FALSE) %>%
   modify_header(update = c(estimate ~ "**log(HR)**",
-                           label ~ "**Variable**")) %>%
+                           label ~ "**Parameter**")) %>%
   italicize_levels() %>% 
-  modify_caption(caption = paste("<div style='font-weight: bold; text-align: center; color: black'>coxme:", 
-                                 paste(deparse(best_formula), collapse = ""))) 
+  as_flex_table() %>% 
+  flextable::set_table_properties(width = .5)
+```
+</div>
+
+<div class = "col-sm-6">
+```{r, results='hold', fig.dim=c(4,6), out.width="80%"}
+model_plot = ggplot(coxme_table,
+        aes(x = Parameter,
+            y = beta)) +
+   geom_errorbar(aes(ymin = beta_lower,
+                     ymax = beta_upper),
+                 col = "black",
+                 width = 0.17,
+                 size = 0.5,
+                 show.legend = FALSE) +
+   geom_point(stat = "identity",
+              show.legend = FALSE,
+              size = 1.5,
+              #position = position_dodge(0.2)
+              ) +
+   geom_hline(yintercept = 0,
+              colour = "red",
+              linetype = 4) +
+   scale_color_manual(values = c("red","blue","green","orange","black")) +
+   scale_x_discrete(expand = c(0.1, 0)) +
+   scale_y_continuous("log(HR) (95 % CI)<br/>relative to respective<br/>baseline level",   
+                        breaks = c(seq(-5, 5, by = 1))) +
+   coord_cartesian(ylim = c(-2, 2), 
+                   expand = TRUE, 
+                   clip = "on") +
+   xlab("") +                                                                    
+   theme_cowplot() +
+   theme(axis.title.y = ggtext::element_markdown(),
+         axis.text.x = element_text(angle = 45,
+                                    hjust = 1,
+                                    size = 14),
+         aspect.ratio = 2)    
+
+print(model_plot)
+```
+</div>
+</div>
+
+## *DGRP OX* Model Selection
+
+```{r}
+data_ox = data_expanded %>% 
+  filter(Line =="DGRP OX")
+
+model1 = coxme(Surv(Time_to_death, Censor) ~ 
+                         Age + Treatment + Sex + (1|Internal_replicate) + (1|Vial_ID), 
+                       data = data_ox)
+summary(model1) 
+
+
+
+model2 = coxme(Surv(Time_to_death, Censor) ~ 
+                         Age + Treatment + Sex + Treatment*Sex + (1|Internal_replicate) + (1|Vial_ID), 
+                       data = data_ox)
+summary(model2)
+test1 = anova(model1, model2)
+print(test1)
+
+
+best_model = model1
+model_formula = str_replace_all(deparse(formula(best_model), 
+                                        width.cutoff = 500), 
+                                c("_" = "\\\\_"))  
+```
+
+<div align="center">
+$`r model_formula`$
+
+<div class = "row">
+<div class = "col-md-6">
+```{r, results='hold'}
+coxme_table = extract_coxme_table(best_model)
+coxme_table$beta_lower = confint(best_model)[,1]
+coxme_table$beta_upper = confint(best_model)[,2]
+
+coxme_table = rownames_to_column(coxme_table, "Parameter")
+coxme_table = coxme_table %>%
+  mutate(across(beta:beta_upper, as.numeric)) %>% 
+  add_row(Parameter = "Baseline",
+          beta = 0,
+          se = 0,
+          z = 0,
+          p = 0,
+          beta_lower = 0,
+          beta_upper = 0) %>%
+  mutate(Parameter = as_factor(Parameter) %>%
+           fct_relevel("Baseline"))
+
+tbl_regression(best_model,
+                          exponentiate = FALSE) %>%
+  modify_header(update = c(estimate ~ "**log(HR)**",
+                           label ~ "**Parameter**")) %>%
+  italicize_levels() %>% 
+  as_flex_table() %>% 
+  flextable::set_table_properties(width = .5)
+```
+</div>
+
+<div class = "col-sm-6">
+```{r, results='hold', fig.dim=c(4,6), out.width="80%"}
+model_plot = ggplot(coxme_table,
+        aes(x = Parameter,
+            y = beta)) +
+   geom_errorbar(aes(ymin = beta_lower,
+                     ymax = beta_upper),
+                 col = "black",
+                 width = 0.17,
+                 size = 0.5,
+                 show.legend = FALSE) +
+   geom_point(stat = "identity",
+              show.legend = FALSE,
+              size = 1.5,
+              #position = position_dodge(0.2)
+              ) +
+   geom_hline(yintercept = 0,
+              colour = "red",
+              linetype = 4) +
+   scale_color_manual(values = c("red","blue","green","orange","black")) +
+   scale_x_discrete(expand = c(0.1, 0)) +
+   scale_y_continuous("log(HR) (95 % CI)<br/>relative to respective<br/>baseline level",   
+                        breaks = c(seq(-5, 5, by = 1))) +
+   coord_cartesian(ylim = c(-2, 2), 
+                   expand = TRUE, 
+                   clip = "on") +
+   xlab("") +                                                                    
+   theme_cowplot() +
+   theme(axis.title.y = ggtext::element_markdown(),
+         axis.text.x = element_text(angle = 45,
+                                    hjust = 1,
+                                    size = 14),
+         aspect.ratio = 2)    
+
+print(model_plot)
+```
+</div>
+</div>
+
+```{r session-info, echo = FALSE}
+sessionInfo()
 ```
