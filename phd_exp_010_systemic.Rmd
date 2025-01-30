@@ -1,24 +1,20 @@
 ---
 title: "Experiment 010"
+subtitle: "Effect of Rapamycin on *wDah* and *DGRP OX* Survival to Systemic Infection with *P. rettgeri*"
 author: "by Barbara Black"
 date: "Last compiled on `r format(Sys.time(), '%d %B, %Y')`"
-output:
-  html_document:
-    code_folding: hide
-    number_sections: true
-    toc: true
-    toc_float: true
-    toc_depth: 3
-    fig_caption: true
-    theme: united
-    css: style.css
-    highlight: zenburn
-  pdf_document:
-    toc: true
-    toc_depth: '3'
-subtitle: 'Effect of Rapamycin Treatment on Survival to Systemic Infection with *P.
-  rettgeri* '
-editor_options:
+output: 
+    html_document:
+      code_folding: hide
+      number_sections: true
+      toc: true
+      toc_float: true
+      toc_depth: 3
+      fig_caption: true
+      theme: united
+      css: style.css
+      highlight: zenburn
+editor_options: 
   chunk_output_type: console
 ---
 
@@ -183,7 +179,7 @@ library(knitr)
 library(stargazer)
 ```
 
-## Themes | `ggplot()`
+## Plot Themes
 
 ```{r ggplot-survival-theme}
 SuperSmallfont= 10
@@ -255,16 +251,19 @@ print(data_raw)
 
 ## Data Processing 
 
-```{r data-wrangling-and-formatting}
-data = data_raw %>%
+```{r, data-wrangling-and-formatting}
+data_tmp = data_raw %>%
   # Remove unnecessary variables
   select(-filename) %>%
   # Turn character variables into factor ones, except for `$Day_of_infection` and `$Time`
-  mutate(across(.cols = where(is.character) & !all_of(c("Day_of_infection", "Time")), 
+  mutate(across(.cols = where(is.character) & !all_of(c("Day_of_infection", "Time")),
                 .fns = as.factor),
+         # Create `$Date_Time` as a POSIXct variable
          Date_Time = paste(Day_of_infection, Time, sep = " "),
          Date_Time = as.POSIXct(Date_Time, format = "%d/%m/%Y %H:%M:%S")) %>%
-  # Arrange rows by the values of `$date_time`
+  # Rename `$Vial_ID` as `$Cage_ID`
+  rename(Cage_ID = Vial_ID) %>%
+  # Arrange rows by the values of `$Date_Time`
   arrange(Date_Time) %>%
   # Group dataset by factor variables
   group_by(across(where(is.factor))) %>%
@@ -272,8 +271,61 @@ data = data_raw %>%
   mutate(Start_time = first(Date_Time),
          across(c(Start_time, Date_Time), ~as.POSIXct(., format = "%d/%m/%Y %H:%M:%S")),
          Time_to_death = difftime(Date_Time, Start_time, units = "hours"),
-         Time_to_death = as.numeric(Time_to_death),
-         Time_to_death = case_when(Time_to_death > 0 & Time_to_death <= 8 ~ 8,
+         Time_to_death = as.numeric(Time_to_death)) %>%
+  # Remove unnecessary variables
+  select(-c(Start_time, Date_Time))
+
+# Create dataset with initial sample size for each experimental group
+sampled_join = data_tmp %>%
+  filter(Time_to_death == 0) %>% 
+  group_by(across(where(is.factor))) %>% 
+  summarise(Sample_size_sum = Count)
+
+# Create dataset with total number of dead individuals for each experimental group
+dead_join = data_tmp %>%
+  filter(Censor == 1 & Time_to_death > 0) %>% 
+  group_by(across(where(is.factor))) %>% 
+  summarise(Dead_sum = sum(Count)) 
+
+# Create dataset to store the number of censored individuals
+censored_join = data_tmp %>%
+  group_by(across(where(is.factor))) %>% 
+  filter(Censor == 0 & Time_to_death > 0) %>% 
+  summarise(Censored_sum = sum(Count)) 
+
+# Combine datasets ending in `_join` to calculate the number of survivors and temporarily store values 
+survived_tmp = sampled_join %>% 
+  left_join(dead_join) %>% 
+  left_join(censored_join) %>% 
+  mutate(Censored_sum = case_when(is.na(Censored_sum) ~ 0,
+                              TRUE ~ Censored_sum),
+         Count = Sample_size_sum - (Dead_sum + Censored_sum))
+
+# Create `max_time` dataset to store the last day of scoring for each respective group
+max_time = data_tmp %>%
+  group_by(across(where(is.factor))) %>% 
+  filter(Time_to_death == max(Time_to_death, na.rm = TRUE))
+
+# Create `survived_bind` dataset and join it to `max_time`
+# Note: Here, `$Time_to_death` corresponds to the last day of scoring for each respective group
+survived_bind = max_time %>%
+  left_join(survived_tmp) %>%
+  # Remove unnecessary variables
+  select(-c(Sample_size_sum, Dead_sum, Censored_sum)) %>% 
+  mutate(Censor = 0)
+
+# Create `dead_bind` dataset to store data from dead individuals only
+dead_bind = data_tmp %>% 
+  filter(Censor == 1 & Time_to_death > 0)
+
+# Create `censored_bind` dataset to store data from censored individuals only
+censored_bind = data_tmp %>% 
+  filter(Censor == 0 & Time_to_death > 0)
+
+# Combine datasets ending in `_bind` and create final `data` dataset
+data = bind_rows(censored_bind, dead_bind, survived_bind) %>% 
+  # Format `$Time_to_death` 
+  mutate(Time_to_death = case_when(Time_to_death > 0 & Time_to_death <= 8 ~ 8,
                                    #Time_to_death > 2 & Time_to_death <= 4 ~ 4,
                                    #Time_to_death > 4 & Time_to_death <= 8 ~ 8,
                                    Time_to_death > 8 & Time_to_death <= 16 ~ 16,
@@ -282,32 +334,30 @@ data = data_raw %>%
                                    Time_to_death > 32 & Time_to_death <= 40 ~ 40,
                                    Time_to_death > 40 & Time_to_death <= 48 ~ 48,
                                    Time_to_death > 48 & Time_to_death <= 56 ~ 56,
-                                   TRUE ~ Time_to_death)) %>%
-  # Remove unnecessary variables
-  select(-c(Start_time, Date_Time)) %>% 
-  # Generate row IDs
+                                   Time_to_death > 56 & Time_to_death <= 64 ~ 64,
+                                   Time_to_death > 64 & Time_to_death <= 72 ~ 72,
+                                   TRUE ~ Time_to_death),
+         # Reorder factor levels in `$Age` and `$Treatment`
+         Age = fct_relevel(Age, c("7 days", "35 days")),
+         Treatment = fct_relevel(Treatment, c("Untreated", "Rapamycin"))) %>% 
+  # Generated row IDs
   rowid_to_column()
 ```
 
 ```{r data-check-and-export}
-# Create dataset with initial sample size for each experimental group
-sample_size = data %>%
-  filter(Time_to_death == 0) %>% 
-  group_by(across(where(is.factor))) %>% 
-  summarise(Sample_size = Count)
-
-# Create dataset with total number of scored flies for each experimental group
+# Create dataset with the total number of scored individuals per experimental group
 scored = data %>%
-  filter(Time_to_death > 0) %>% 
+  filter(Time_to_death < max(Time_to_death)) %>% 
   group_by(across(where(is.factor))) %>% 
-  summarise(Events = sum(Count))
+  summarise(Scored_sum = sum(Count))
 
-# Check for miscounted data by calculating the difference between sample size and total number of scored flies, and then searching for negative `$Final_count` values
-negative_values = left_join(sample_size, scored) %>% 
-  mutate(Final_count = Sample_size - Events) %>% 
+# Check for miscounted data by calculating the difference between starting sample size 
+# and the total number of scored individuals
+negative_values = left_join(sampled_join, scored) %>% 
+  mutate(Final_count = Sample_size_sum - Scored_sum) %>% 
   filter(Final_count < 0)
 
-# Print experimental groups showing negative count values
+# Print experimental groups showing negative values in `$Final_count`
 print(negative_values)
 
 # Export dataset as CSV file
@@ -325,27 +375,26 @@ data_expanded = data %>%
   uncount(Count) %>%
   # Generate new row IDs
   rowid_to_column() %>% 
-  # Turn $Day_of_infection into factor
-  mutate(Day_of_infection = as.factor(Day_of_infection),
-         Treatment = fct_relevel(Treatment, rev),
-         Age = fct_relevel(Age, rev))
+  # Turn `$Day_of_infection` into factor
+  mutate(Day_of_infection = as.factor(Day_of_infection))
 ```
 
 ```{r plot-caption}
-num_observations = data_expanded %>% 
-  filter(Time_to_death == 0 & Censor == 0) %>% 
+# Summarise the sample size
+num_observations = sampled_join %>% 
   group_by(Line) %>% 
-  summarise(count = n(), .groups = "drop")
+  summarise(Count = sum(Sample_size_sum), .groups = "drop")
 
+# Store sample size values as text for later use as plot caption
 plot_caption = num_observations %>% 
-  mutate(summary = paste(Line, "=", count)) %>% 
+  mutate(summary = paste(Line, "=", Count)) %>% 
   pull(summary) %>% 
   paste(collapse = "; ")
 ```
 
 ## Across Lines
 
-```{r survival-by-genotype, fig.dim=c(6, 6), fig.align='center', out.width="75%"}
+```{r survival-by-line, fig.dim=c(6, 6), fig.align='center', out.width="75%"}
 fit_genotype = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Line,
                    data = data_expanded)
 
@@ -364,7 +413,7 @@ ggplot(plot_genotype, aes(x = Time, y = Survival, colour = Treatment)) +
   geom_point(colour = "black", size = 1) +
   scale_color_manual(values = colours[c(1,7)]) +
   scale_linetype_manual(values = c("solid", "dashed")) +
-  labs(title = "Effect of rapamycin treatment on survival \nto systemic P. rettgeri infection \nacross genotypes",
+  labs(title = "Survival to systemic P. rettgeri infection",
        caption = paste("Number of observations (n) per genotype:", plot_caption)) +
   scale_y_continuous("Proportion of survivors",
                      limits = c(0, 1),
@@ -376,7 +425,7 @@ ggplot(plot_genotype, aes(x = Time, y = Survival, colour = Treatment)) +
 
 ## Across Lines and Replicates
 
-```{r survival-by-genotype-and-replicates, fig.dim=c(7, 7), fig.align='center', out.width="75%"}
+```{r survival-by-line-and-replicate, fig.dim=c(7, 7), fig.align='center', out.width="75%"}
 fit_replicate = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Line + Internal_replicate,
                    data = data_expanded)
 
@@ -395,7 +444,7 @@ ggplot(plot_replicate, aes(x = Time, y = Survival, colour = Treatment)) +
   geom_point(colour = "black", size = 1) +
   scale_color_manual(values = colours[c(1,7)]) +
   scale_linetype_manual(values = c("solid", "dashed")) +
-  labs(title = "Effect of rapamycin treatment on survival \nto systemic P. rettgeri infection \nacross genotypes and replicates",
+  labs(title = "Survival to systemic P. rettgeri infection",
        caption = paste("Number of observations (n) per genotype:", plot_caption)) +
   scale_y_continuous("Proportion of survivors",
                      limits = c(0, 1),
@@ -411,7 +460,7 @@ ggplot(plot_replicate, aes(x = Time, y = Survival, colour = Treatment)) +
 
 ## Across Lines and Sexes
 
-```{r survival-by-genotype-and-sex, fig.dim=c(6, 6), fig.align='center', out.width="75%"}
+```{r survival-by-line-and-sex, fig.dim=c(6, 6), fig.align='center', out.width="75%"}
 fit_sex = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Line + Sex,
                    data = data_expanded)
 
@@ -430,7 +479,7 @@ ggplot(plot_sex, aes(x = Time, y = Survival, colour = Treatment)) +
   geom_point(colour = "black", size = 1) +
   scale_color_manual(values = colours[c(1,7)]) +
   scale_linetype_manual(values = c("solid", "dashed")) +
-  labs(title = "Effect of rapamycin treatment on survival \nto systemic P. rettgeri infection \nin males and females across genotypes",
+  labs(title = "Survival to systemic P. rettgeri infection",
        caption = paste("Number of observations (n) per genotype:", plot_caption)) +
   scale_y_continuous("Proportion of survivors",
                      limits = c(0, 1),
@@ -440,141 +489,48 @@ ggplot(plot_sex, aes(x = Time, y = Survival, colour = Treatment)) +
   basic_theme_surv
 ```
 
-# Regression and Likelihood Ratio Tests {.tabset}
+# Regression {.tabset}
 
-## Pooled Model Selection
+<br><br>
 
-```{r}
-model1 = coxme(Surv(Time_to_death, Censor) ~ 
-                         Age + Treatment + Sex + Line + (1|Internal_replicate) + (1|Vial_ID), 
-                       data = data_expanded)
-summary(model1) 
+## *wDah* 
 
+<br><br>
 
+### Model 1
 
-model2 = coxme(Surv(Time_to_death, Censor) ~ 
-                         Age + Treatment + Sex + Line + Treatment*Sex + (1|Internal_replicate) + (1|Vial_ID), 
-                       data = data_expanded)
-summary(model2)
-test1 = anova(model1, model2)
-print(test1)
-
-
-model3 = coxme(Surv(Time_to_death, Censor) ~ 
-                         Age + Treatment + Sex + Line + Treatment*Line + (1|Internal_replicate) + (1|Vial_ID), 
-                       data = data_expanded)
-summary(model3)
-test2 = anova(model1, model3)
-print(test2)
-
-
-model4 = coxme(Surv(Time_to_death, Censor) ~ 
-                         Age + Treatment + Sex + Line + Sex*Line + (1|Internal_replicate) + (1|Vial_ID), 
-                       data = data_expanded)
-summary(model4)
-test3 = anova(model1, model4)
-print(test3)
-
-
-best_model = model4
-model_formula = str_replace_all(deparse(formula(best_model), 
-                                        width.cutoff = 500), 
-                                c("_" = "\\\\_"))  
-```
-
-<div align="center">
-$`r model_formula`$
-
-<div class = "row">
-<div class = "col-md-6">
-```{r, results='hold'}
-coxme_table = extract_coxme_table(best_model)
-coxme_table$beta_lower = confint(best_model)[,1]
-coxme_table$beta_upper = confint(best_model)[,2]
-
-coxme_table = rownames_to_column(coxme_table, "Parameter")
-coxme_table = coxme_table %>%
-  mutate(across(beta:beta_upper, as.numeric)) %>% 
-  add_row(Parameter = "Baseline",
-          beta = 0,
-          se = 0,
-          z = 0,
-          p = 0,
-          beta_lower = 0,
-          beta_upper = 0) %>%
-  mutate(Parameter = as_factor(Parameter) %>%
-           fct_relevel("Baseline"))
-
-tbl_regression(best_model,
-                          exponentiate = FALSE) %>%
-  modify_header(update = c(estimate ~ "**log(HR)**",
-                           label ~ "**Parameter**")) %>%
-  italicize_levels() %>% 
-  as_flex_table() %>% 
-  flextable::set_table_properties(width = .5)
-```
-</div>
-
-<div class = "col-sm-6">
-```{r, results='hold', fig.dim=c(4,6), out.width="80%"}
-model_plot = ggplot(coxme_table,
-        aes(x = Parameter,
-            y = beta)) +
-   geom_errorbar(aes(ymin = beta_lower,
-                     ymax = beta_upper),
-                 col = "black",
-                 width = 0.17,
-                 size = 0.5,
-                 show.legend = FALSE) +
-   geom_point(stat = "identity",
-              show.legend = FALSE,
-              size = 1.5,
-              #position = position_dodge(0.2)
-              ) +
-   geom_hline(yintercept = 0,
-              colour = "red",
-              linetype = 4) +
-   scale_color_manual(values = c("red","blue","green","orange","black")) +
-   scale_x_discrete(expand = c(0.1, 0)) +
-   scale_y_continuous("log(HR) (95 % CI)<br/>relative to respective<br/>baseline level",   
-                        breaks = c(seq(-5, 5, by = 1))) +
-   coord_cartesian(ylim = c(-2, 2), 
-                   expand = TRUE, 
-                   clip = "on") +
-   xlab("") +                                                                    
-   theme_cowplot() +
-   theme(axis.title.y = ggtext::element_markdown(),
-         axis.text.x = element_text(angle = 45,
-                                    hjust = 1,
-                                    size = 14),
-         aspect.ratio = 2)    
-
-print(model_plot)
-```
-</div>
-</div>
-
-## *wDah* Model Selection
-
-```{r}
+```{r wdah-model-1, results='hold'}
 data_wdah = data_expanded %>% 
   filter(Line =="wDah")
 
 model1 = coxme(Surv(Time_to_death, Censor) ~ 
-                         Age + Treatment + Sex + (1|Internal_replicate) + (1|Vial_ID), 
+                         Age + Treatment + Sex + (1|Internal_replicate) + (1|Cage_ID), 
                        data = data_wdah)
 summary(model1) 
+```
+<br><br>
 
+### Model 2
 
-
+```{r wdah-model-2, results='hold'}
 model2 = coxme(Surv(Time_to_death, Censor) ~ 
-                         Age + Treatment + Sex + Treatment*Sex + (1|Internal_replicate) + (1|Vial_ID), 
+                         Age + Treatment + Sex + Treatment*Sex + (1|Internal_replicate) + (1|Cage_ID), 
                        data = data_wdah)
 summary(model2)
+```
+<br><br>
+
+### Likelihood Ratio Test
+
+```{r wdah-lrt, results='hold'}
 test1 = anova(model1, model2)
 print(test1)
+```
+<br><br>
 
+### Best Model
 
+```{r wdah-best-model, results='hold'}
 best_model = model1
 model_formula = str_replace_all(deparse(formula(best_model), 
                                         width.cutoff = 500), 
@@ -586,7 +542,7 @@ $`r model_formula`$
 
 <div class = "row">
 <div class = "col-md-6">
-```{r, results='hold'}
+```{r wdah-coxme-table, results='hold'}
 coxme_table = extract_coxme_table(best_model)
 coxme_table$beta_lower = confint(best_model)[,1]
 coxme_table$beta_upper = confint(best_model)[,2]
@@ -615,7 +571,7 @@ tbl_regression(best_model,
 </div>
 
 <div class = "col-sm-6">
-```{r, results='hold', fig.dim=c(4,6), out.width="80%"}
+```{r wdah-coxme-plot, results='hold', fig.dim=c(3,5), out.width="80%"}
 model_plot = ggplot(coxme_table,
         aes(x = Parameter,
             y = beta)) +
@@ -635,7 +591,7 @@ model_plot = ggplot(coxme_table,
               linetype = 4) +
    scale_color_manual(values = c("red","blue","green","orange","black")) +
    scale_x_discrete(expand = c(0.1, 0)) +
-   scale_y_continuous("log(HR) (95 % CI)<br/>relative to respective<br/>baseline level",   
+   scale_y_continuous("log(HR) (95 % CI)",   
                         breaks = c(seq(-5, 5, by = 1))) +
    coord_cartesian(ylim = c(-2, 2), 
                    expand = TRUE, 
@@ -653,39 +609,57 @@ print(model_plot)
 </div>
 </div>
 
-## *DGRP OX* Model Selection
+## *DGRP OX* 
 
-```{r}
+<br><br>
+
+### Model 1
+
+```{r ox-model-1, results='hold'}
 data_ox = data_expanded %>% 
   filter(Line =="DGRP OX")
 
 model1 = coxme(Surv(Time_to_death, Censor) ~ 
-                         Age + Treatment + Sex + (1|Internal_replicate) + (1|Vial_ID), 
+                         Age + Treatment + Sex + (1|Internal_replicate) + (1|Cage_ID), 
                        data = data_ox)
 summary(model1) 
+```
+<br><br>
 
+### Model 2
 
-
+```{r ox-model-2, results='hold'}
 model2 = coxme(Surv(Time_to_death, Censor) ~ 
-                         Age + Treatment + Sex + Treatment*Sex + (1|Internal_replicate) + (1|Vial_ID), 
+                         Age + Treatment + Sex + Treatment*Sex + (1|Internal_replicate) + (1|Cage_ID), 
                        data = data_ox)
 summary(model2)
+```
+<br><br>
+
+### Likelihood Ratio Test
+
+```{r ox-lrt, results='hold'}
 test1 = anova(model1, model2)
 print(test1)
+```
+<br><br>
 
+### Best Model
 
+```{r ox-best-model, results='hold'}
 best_model = model1
 model_formula = str_replace_all(deparse(formula(best_model), 
                                         width.cutoff = 500), 
                                 c("_" = "\\\\_"))  
 ```
+<br><br>
 
 <div align="center">
 $`r model_formula`$
 
 <div class = "row">
 <div class = "col-md-6">
-```{r, results='hold'}
+```{r ox-coxme-table, results='hold'}
 coxme_table = extract_coxme_table(best_model)
 coxme_table$beta_lower = confint(best_model)[,1]
 coxme_table$beta_upper = confint(best_model)[,2]
@@ -714,7 +688,7 @@ tbl_regression(best_model,
 </div>
 
 <div class = "col-sm-6">
-```{r, results='hold', fig.dim=c(4,6), out.width="80%"}
+```{r ox-coxme-plot, results='hold', fig.dim=c(3,5), out.width="80%"}
 model_plot = ggplot(coxme_table,
         aes(x = Parameter,
             y = beta)) +
@@ -734,7 +708,7 @@ model_plot = ggplot(coxme_table,
               linetype = 4) +
    scale_color_manual(values = c("red","blue","green","orange","black")) +
    scale_x_discrete(expand = c(0.1, 0)) +
-   scale_y_continuous("log(HR) (95 % CI)<br/>relative to respective<br/>baseline level",   
+   scale_y_continuous("log(HR) (95 % CI)",   
                         breaks = c(seq(-5, 5, by = 1))) +
    coord_cartesian(ylim = c(-2, 2), 
                    expand = TRUE, 
