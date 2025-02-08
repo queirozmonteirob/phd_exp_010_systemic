@@ -323,23 +323,10 @@ censored_bind = data_tmp %>%
   filter(Censor == 0 & Time_to_death > 0)
 
 # Combine datasets ending in `_bind` and create final `data` dataset
-data = bind_rows(censored_bind, dead_bind, survived_bind) %>% 
-  # Format `$Time_to_death` 
-  mutate(Time_to_death = case_when(Time_to_death > 0 & Time_to_death <= 8 ~ 8,
-                                   #Time_to_death > 2 & Time_to_death <= 4 ~ 4,
-                                   #Time_to_death > 4 & Time_to_death <= 8 ~ 8,
-                                   Time_to_death > 8 & Time_to_death <= 16 ~ 16,
-                                   Time_to_death > 16 & Time_to_death <= 24 ~ 24,
-                                   Time_to_death > 24 & Time_to_death <= 32 ~ 32,
-                                   Time_to_death > 32 & Time_to_death <= 40 ~ 40,
-                                   Time_to_death > 40 & Time_to_death <= 48 ~ 48,
-                                   Time_to_death > 48 & Time_to_death <= 56 ~ 56,
-                                   Time_to_death > 56 & Time_to_death <= 64 ~ 64,
-                                   Time_to_death > 64 & Time_to_death <= 72 ~ 72,
-                                   TRUE ~ Time_to_death),
-         # Reorder factor levels in `$Age` and `$Treatment`
-         Age = fct_relevel(Age, c("7 days", "35 days")),
-         Treatment = fct_relevel(Treatment, c("Untreated", "Rapamycin"))) %>% 
+data = bind_rows(censored_bind, dead_bind, survived_bind) %>%
+  # Reorder factor levels in `$Age` and `$Treatment`
+  mutate(Age = fct_relevel(Age, c("7 days", "35 days")),
+         Treatment = fct_relevel(Treatment, c("Untreated", "Rapamycin"))) %>%
   # Generated row IDs
   rowid_to_column()
 ```
@@ -398,7 +385,7 @@ plot_caption = num_observations %>%
 fit_genotype = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Line,
                    data = data_expanded)
 
-plot_genotype = ggplotprep2(fit_genotype, times = c(seq(0, 56, by = 8))) %>%
+plot_genotype = ggplotprep2(fit_genotype, times = c(0, seq(18, 56, by = 8))) %>%
   mutate(Condition = str_remove_all(Condition,"[a-zA-Z]*=")) %>%
   separate(Condition, c("Treatment", "Age", "Line"), sep = ", ") %>% 
   mutate(across(where(is.character), as.factor),
@@ -409,7 +396,7 @@ ggplot(plot_genotype, aes(x = Time, y = Survival, colour = Treatment)) +
   facet_grid(~Line) +
   geom_hline(yintercept = 0.5, linetype = "dotted") +
   geom_vline(xintercept = 48, colour = "red", linetype = "dotted") +
-  geom_line(aes(linetype = Age), linewidth = 1) +
+  geom_line(aes(linetype = Age), linewidth = 1.25) +
   geom_point(colour = "black", size = 1) +
   scale_color_manual(values = colours[c(1,7)]) +
   scale_linetype_manual(values = c("solid", "dashed")) +
@@ -429,7 +416,7 @@ ggplot(plot_genotype, aes(x = Time, y = Survival, colour = Treatment)) +
 fit_replicate = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Line + Internal_replicate,
                    data = data_expanded)
 
-plot_replicate = ggplotprep2(fit_replicate, times = c(seq(0, 56, by = 8))) %>%
+plot_replicate = ggplotprep2(fit_replicate, times = c(0, seq(18, 56, by = 8))) %>%
   mutate(Condition = str_remove_all(Condition,"[a-zA-Z]*=")) %>%
   separate(Condition, c("Treatment", "Age", "Line", "Internal_replicate"), sep = ", ") %>% 
   mutate(across(where(is.character), as.factor),
@@ -440,7 +427,7 @@ ggplot(plot_replicate, aes(x = Time, y = Survival, colour = Treatment)) +
   facet_grid(~Internal_replicate~Line) +
   geom_hline(yintercept = 0.5, linetype = "dotted") +
   geom_vline(xintercept = 48, colour = "red", linetype = "dotted") +
-  geom_line(aes(linetype = Age), linewidth = 1) +
+  geom_line(aes(linetype = Age), linewidth = 1.25) +
   geom_point(colour = "black", size = 1) +
   scale_color_manual(values = colours[c(1,7)]) +
   scale_linetype_manual(values = c("solid", "dashed")) +
@@ -464,7 +451,7 @@ ggplot(plot_replicate, aes(x = Time, y = Survival, colour = Treatment)) +
 fit_sex = survfit(Surv(Time_to_death, Censor) ~ Treatment + Age + Line + Sex,
                    data = data_expanded)
 
-plot_sex = ggplotprep2(fit_sex, times = c(seq(0, 56, by = 8))) %>%
+plot_sex = ggplotprep2(fit_sex, times = c(0, seq(18, 56, by = 8))) %>%
   mutate(Condition = str_remove_all(Condition,"[a-zA-Z]*=")) %>%
   separate(Condition, c("Treatment", "Age", "Line", "Sex"), sep = ", ") %>% 
   mutate(across(where(is.character), as.factor),
@@ -475,7 +462,7 @@ ggplot(plot_sex, aes(x = Time, y = Survival, colour = Treatment)) +
   facet_grid(~Sex~Line) +
   geom_hline(yintercept = 0.5, linetype = "dotted") +
   geom_vline(xintercept = 48, colour = "red", linetype = "dotted") +
-  geom_line(aes(linetype = Age), linewidth = 1) +
+  geom_line(aes(linetype = Age), linewidth = 1.25) +
   geom_point(colour = "black", size = 1) +
   scale_color_manual(values = colours[c(1,7)]) +
   scale_linetype_manual(values = c("solid", "dashed")) +
@@ -493,36 +480,36 @@ ggplot(plot_sex, aes(x = Time, y = Survival, colour = Treatment)) +
 
 <br><br>
 
-## *wDah* 
+## *wDah* Control
 
 <br><br>
 
 ### Model 1
 
-```{r wdah-model-1, results='hold'}
-data_wdah = data_expanded %>% 
-  filter(Line =="wDah")
+```{r wdah-control-model-1, results='hold'}
+data_wdah_control = data_expanded %>% 
+  filter(Line =="wDah" & Treatment == "Untreated")
 
 model1 = coxme(Surv(Time_to_death, Censor) ~ 
-                         Age + Treatment + Sex + (1|Internal_replicate) + (1|Cage_ID), 
-                       data = data_wdah)
+                         Age + Sex + (1|Internal_replicate) + (1|Cage_ID), 
+                       data = data_wdah_control)
 summary(model1) 
 ```
 <br><br>
 
 ### Model 2
 
-```{r wdah-model-2, results='hold'}
+```{r wdah-control-model-2, results='hold'}
 model2 = coxme(Surv(Time_to_death, Censor) ~ 
-                         Age + Treatment + Sex + Treatment*Sex + (1|Internal_replicate) + (1|Cage_ID), 
-                       data = data_wdah)
+                         Age + Sex + Age*Sex + (1|Internal_replicate) + (1|Cage_ID), 
+                       data = data_wdah_control)
 summary(model2)
 ```
 <br><br>
 
 ### Likelihood Ratio Test
 
-```{r wdah-lrt, results='hold'}
+```{r wdah-control-lrt, results='hold'}
 test1 = anova(model1, model2)
 print(test1)
 ```
@@ -530,8 +517,8 @@ print(test1)
 
 ### Best Model
 
-```{r wdah-best-model, results='hold'}
-best_model = model1
+```{r wdah-control-best-model, results='hold'}
+best_model = model2
 model_formula = str_replace_all(deparse(formula(best_model), 
                                         width.cutoff = 500), 
                                 c("_" = "\\\\_"))  
@@ -542,7 +529,7 @@ $`r model_formula`$
 
 <div class = "row">
 <div class = "col-md-6">
-```{r wdah-coxme-table, results='hold'}
+```{r wdah-control-coxme-table, results='hold'}
 coxme_table = extract_coxme_table(best_model)
 coxme_table$beta_lower = confint(best_model)[,1]
 coxme_table$beta_upper = confint(best_model)[,2]
@@ -571,7 +558,7 @@ tbl_regression(best_model,
 </div>
 
 <div class = "col-sm-6">
-```{r wdah-coxme-plot, results='hold', fig.dim=c(3,5), out.width="80%"}
+```{r wdah-control-coxme-plot, results='hold', fig.dim=c(3,5), out.width="80%"}
 model_plot = ggplot(coxme_table,
         aes(x = Parameter,
             y = beta)) +
@@ -609,36 +596,36 @@ print(model_plot)
 </div>
 </div>
 
-## *DGRP OX* 
+## *wDah* 7 days
 
 <br><br>
 
 ### Model 1
 
-```{r ox-model-1, results='hold'}
-data_ox = data_expanded %>% 
-  filter(Line =="DGRP OX")
+```{r wdah-7days-model-1, results='hold'}
+data_wdah_7days = data_expanded %>% 
+  filter(Line =="wDah" & Age == "7 days")
 
 model1 = coxme(Surv(Time_to_death, Censor) ~ 
-                         Age + Treatment + Sex + (1|Internal_replicate) + (1|Cage_ID), 
-                       data = data_ox)
+                         Treatment + Sex + (1|Internal_replicate) + (1|Cage_ID), 
+                       data = data_wdah_7days)
 summary(model1) 
 ```
 <br><br>
 
 ### Model 2
 
-```{r ox-model-2, results='hold'}
+```{r wdah-7days-model-2, results='hold'}
 model2 = coxme(Surv(Time_to_death, Censor) ~ 
-                         Age + Treatment + Sex + Treatment*Sex + (1|Internal_replicate) + (1|Cage_ID), 
-                       data = data_ox)
+                         Treatment + Sex + Treatment*Sex + (1|Internal_replicate) + (1|Cage_ID), 
+                       data = data_wdah_7days)
 summary(model2)
 ```
 <br><br>
 
 ### Likelihood Ratio Test
 
-```{r ox-lrt, results='hold'}
+```{r wdah-7days-lrt, results='hold'}
 test1 = anova(model1, model2)
 print(test1)
 ```
@@ -646,20 +633,19 @@ print(test1)
 
 ### Best Model
 
-```{r ox-best-model, results='hold'}
+```{r wdah-7days-best-model, results='hold'}
 best_model = model1
 model_formula = str_replace_all(deparse(formula(best_model), 
                                         width.cutoff = 500), 
                                 c("_" = "\\\\_"))  
 ```
-<br><br>
 
 <div align="center">
 $`r model_formula`$
 
 <div class = "row">
 <div class = "col-md-6">
-```{r ox-coxme-table, results='hold'}
+```{r wdah-7days-coxme-table, results='hold'}
 coxme_table = extract_coxme_table(best_model)
 coxme_table$beta_lower = confint(best_model)[,1]
 coxme_table$beta_upper = confint(best_model)[,2]
@@ -688,7 +674,7 @@ tbl_regression(best_model,
 </div>
 
 <div class = "col-sm-6">
-```{r ox-coxme-plot, results='hold', fig.dim=c(3,5), out.width="80%"}
+```{r wdah-7days-coxme-plot, results='hold', fig.dim=c(3,5), out.width="80%"}
 model_plot = ggplot(coxme_table,
         aes(x = Parameter,
             y = beta)) +
@@ -726,6 +712,492 @@ print(model_plot)
 </div>
 </div>
 
-```{r session-info, echo = FALSE}
-sessionInfo()
+## *wDah* 35 days
+
+<br><br>
+
+### Model 1
+
+```{r wdah-35days-model-1, results='hold'}
+data_wdah_35days = data_expanded %>% 
+  filter(Line =="wDah" & Age == "35 days")
+
+model1 = coxme(Surv(Time_to_death, Censor) ~ 
+                         Treatment + Sex + (1|Internal_replicate) + (1|Cage_ID), 
+                       data = data_wdah_35days)
+summary(model1) 
 ```
+<br><br>
+
+### Model 2
+
+```{r wdah-35days-model-2, results='hold'}
+model2 = coxme(Surv(Time_to_death, Censor) ~ 
+                         Treatment + Sex + Treatment*Sex + (1|Internal_replicate) + (1|Cage_ID), 
+                       data = data_wdah_35days)
+summary(model2)
+```
+<br><br>
+
+### Likelihood Ratio Test
+
+```{r wdah-35days-lrt, results='hold'}
+test1 = anova(model1, model2)
+print(test1)
+```
+<br><br>
+
+### Best Model
+
+```{r wdah-35days-best-model, results='hold'}
+best_model = model1
+model_formula = str_replace_all(deparse(formula(best_model), 
+                                        width.cutoff = 500), 
+                                c("_" = "\\\\_"))  
+```
+
+<div align="center">
+$`r model_formula`$
+
+<div class = "row">
+<div class = "col-md-6">
+```{r wdah-35days-coxme-table, results='hold'}
+coxme_table = extract_coxme_table(best_model)
+coxme_table$beta_lower = confint(best_model)[,1]
+coxme_table$beta_upper = confint(best_model)[,2]
+
+coxme_table = rownames_to_column(coxme_table, "Parameter")
+coxme_table = coxme_table %>%
+  mutate(across(beta:beta_upper, as.numeric)) %>% 
+  add_row(Parameter = "Baseline",
+          beta = 0,
+          se = 0,
+          z = 0,
+          p = 0,
+          beta_lower = 0,
+          beta_upper = 0) %>%
+  mutate(Parameter = as_factor(Parameter) %>%
+           fct_relevel("Baseline"))
+
+tbl_regression(best_model,
+                          exponentiate = FALSE) %>%
+  modify_header(update = c(estimate ~ "**log(HR)**",
+                           label ~ "**Parameter**")) %>%
+  italicize_levels() %>% 
+  as_flex_table() %>% 
+  flextable::set_table_properties(width = .5)
+```
+</div>
+
+<div class = "col-sm-6">
+```{r wdah-35days-coxme-plot, results='hold', fig.dim=c(3,5), out.width="80%"}
+model_plot = ggplot(coxme_table,
+        aes(x = Parameter,
+            y = beta)) +
+   geom_errorbar(aes(ymin = beta_lower,
+                     ymax = beta_upper),
+                 col = "black",
+                 width = 0.17,
+                 size = 0.5,
+                 show.legend = FALSE) +
+   geom_point(stat = "identity",
+              show.legend = FALSE,
+              size = 1.5,
+              #position = position_dodge(0.2)
+              ) +
+   geom_hline(yintercept = 0,
+              colour = "red",
+              linetype = 4) +
+   scale_color_manual(values = c("red","blue","green","orange","black")) +
+   scale_x_discrete(expand = c(0.1, 0)) +
+   scale_y_continuous("log(HR) (95 % CI)",   
+                        breaks = c(seq(-5, 5, by = 1))) +
+   coord_cartesian(ylim = c(-2, 2), 
+                   expand = TRUE, 
+                   clip = "on") +
+   xlab("") +                                                                    
+   theme_cowplot() +
+   theme(axis.title.y = ggtext::element_markdown(),
+         axis.text.x = element_text(angle = 45,
+                                    hjust = 1,
+                                    size = 14),
+         aspect.ratio = 2)    
+
+print(model_plot)
+```
+</div>
+</div>
+
+## *DGRP OX* Control
+
+<br><br>
+
+### Model 1
+
+```{r ox-control-model-1, results='hold'}
+data_ox_control = data_expanded %>% 
+  filter(Line =="DGRP OX" & Treatment == "Untreated")
+
+model1 = coxme(Surv(Time_to_death, Censor) ~ 
+                         Age + Sex + (1|Internal_replicate) + (1|Cage_ID), 
+                       data = data_ox_control)
+summary(model1) 
+```
+<br><br>
+
+### Model 2
+
+```{r ox-control-model-2, results='hold'}
+model2 = coxme(Surv(Time_to_death, Censor) ~ 
+                         Age + Sex + Age*Sex + (1|Internal_replicate) + (1|Cage_ID), 
+                       data = data_ox_control)
+summary(model2)
+```
+<br><br>
+
+### Likelihood Ratio Test
+
+```{r ox-control-lrt, results='hold'}
+test1 = anova(model1, model2)
+print(test1)
+```
+<br><br>
+
+### Best Model
+
+```{r ox-control-best-model, results='hold'}
+best_model = model2
+model_formula = str_replace_all(deparse(formula(best_model), 
+                                        width.cutoff = 500), 
+                                c("_" = "\\\\_"))  
+```
+
+<div align="center">
+$`r model_formula`$
+
+<div class = "row">
+<div class = "col-md-6">
+```{r ox-control-coxme-table, results='hold'}
+coxme_table = extract_coxme_table(best_model)
+coxme_table$beta_lower = confint(best_model)[,1]
+coxme_table$beta_upper = confint(best_model)[,2]
+
+coxme_table = rownames_to_column(coxme_table, "Parameter")
+coxme_table = coxme_table %>%
+  mutate(across(beta:beta_upper, as.numeric)) %>% 
+  add_row(Parameter = "Baseline",
+          beta = 0,
+          se = 0,
+          z = 0,
+          p = 0,
+          beta_lower = 0,
+          beta_upper = 0) %>%
+  mutate(Parameter = as_factor(Parameter) %>%
+           fct_relevel("Baseline"))
+
+tbl_regression(best_model,
+                          exponentiate = FALSE) %>%
+  modify_header(update = c(estimate ~ "**log(HR)**",
+                           label ~ "**Parameter**")) %>%
+  italicize_levels() %>% 
+  as_flex_table() %>% 
+  flextable::set_table_properties(width = .5)
+```
+</div>
+
+<div class = "col-sm-6">
+```{r ox-control-coxme-plot, results='hold', fig.dim=c(3,5), out.width="80%"}
+model_plot = ggplot(coxme_table,
+        aes(x = Parameter,
+            y = beta)) +
+   geom_errorbar(aes(ymin = beta_lower,
+                     ymax = beta_upper),
+                 col = "black",
+                 width = 0.17,
+                 size = 0.5,
+                 show.legend = FALSE) +
+   geom_point(stat = "identity",
+              show.legend = FALSE,
+              size = 1.5,
+              #position = position_dodge(0.2)
+              ) +
+   geom_hline(yintercept = 0,
+              colour = "red",
+              linetype = 4) +
+   scale_color_manual(values = c("red","blue","green","orange","black")) +
+   scale_x_discrete(expand = c(0.1, 0)) +
+   scale_y_continuous("log(HR) (95 % CI)",   
+                        breaks = c(seq(-5, 5, by = 1))) +
+   coord_cartesian(ylim = c(-2, 2), 
+                   expand = TRUE, 
+                   clip = "on") +
+   xlab("") +                                                                    
+   theme_cowplot() +
+   theme(axis.title.y = ggtext::element_markdown(),
+         axis.text.x = element_text(angle = 45,
+                                    hjust = 1,
+                                    size = 14),
+         aspect.ratio = 2)    
+
+print(model_plot)
+```
+</div>
+</div>
+
+## *DGRP* 7 days
+
+<br><br>
+
+### Model 1
+
+```{r ox-7days-model-1, results='hold'}
+data_ox_7days = data_expanded %>% 
+  filter(Line =="DGRP OX" & Age == "7 days")
+
+model1 = coxme(Surv(Time_to_death, Censor) ~ 
+                         Treatment + Sex + (1|Internal_replicate) + (1|Cage_ID), 
+                       data = data_ox_7days)
+summary(model1) 
+```
+<br><br>
+
+### Model 2
+
+```{r ox-7days-model-2, results='hold'}
+model2 = coxme(Surv(Time_to_death, Censor) ~ 
+                         Treatment + Sex + Treatment*Sex + (1|Internal_replicate) + (1|Cage_ID), 
+                       data = data_ox_7days)
+summary(model2)
+```
+<br><br>
+
+### Likelihood Ratio Test
+
+```{r ox-7day-lrt, results='hold'}
+test1 = anova(model1, model2)
+print(test1)
+```
+<br><br>
+
+### Best Model
+
+```{r ox-7days-best-model, results='hold'}
+best_model = model1
+model_formula = str_replace_all(deparse(formula(best_model), 
+                                        width.cutoff = 500), 
+                                c("_" = "\\\\_"))  
+```
+
+<div align="center">
+$`r model_formula`$
+
+<div class = "row">
+<div class = "col-md-6">
+```{r ox-7days-coxme-table, results='hold'}
+coxme_table = extract_coxme_table(best_model)
+coxme_table$beta_lower = confint(best_model)[,1]
+coxme_table$beta_upper = confint(best_model)[,2]
+
+coxme_table = rownames_to_column(coxme_table, "Parameter")
+coxme_table = coxme_table %>%
+  mutate(across(beta:beta_upper, as.numeric)) %>% 
+  add_row(Parameter = "Baseline",
+          beta = 0,
+          se = 0,
+          z = 0,
+          p = 0,
+          beta_lower = 0,
+          beta_upper = 0) %>%
+  mutate(Parameter = as_factor(Parameter) %>%
+           fct_relevel("Baseline"))
+
+tbl_regression(best_model,
+                          exponentiate = FALSE) %>%
+  modify_header(update = c(estimate ~ "**log(HR)**",
+                           label ~ "**Parameter**")) %>%
+  italicize_levels() %>% 
+  as_flex_table() %>% 
+  flextable::set_table_properties(width = .5)
+```
+</div>
+
+<div class = "col-sm-6">
+```{r ox-7days-coxme-plot, results='hold', fig.dim=c(3,5), out.width="80%"}
+model_plot = ggplot(coxme_table,
+        aes(x = Parameter,
+            y = beta)) +
+   geom_errorbar(aes(ymin = beta_lower,
+                     ymax = beta_upper),
+                 col = "black",
+                 width = 0.17,
+                 size = 0.5,
+                 show.legend = FALSE) +
+   geom_point(stat = "identity",
+              show.legend = FALSE,
+              size = 1.5,
+              #position = position_dodge(0.2)
+              ) +
+   geom_hline(yintercept = 0,
+              colour = "red",
+              linetype = 4) +
+   scale_color_manual(values = c("red","blue","green","orange","black")) +
+   scale_x_discrete(expand = c(0.1, 0)) +
+   scale_y_continuous("log(HR) (95 % CI)",   
+                        breaks = c(seq(-5, 5, by = 1))) +
+   coord_cartesian(ylim = c(-2, 2), 
+                   expand = TRUE, 
+                   clip = "on") +
+   xlab("") +                                                                    
+   theme_cowplot() +
+   theme(axis.title.y = ggtext::element_markdown(),
+         axis.text.x = element_text(angle = 45,
+                                    hjust = 1,
+                                    size = 14),
+         aspect.ratio = 2)    
+
+print(model_plot)
+```
+</div>
+</div>
+
+## *DGRP OX* 35 days
+
+<br><br>
+
+### Model 1
+
+```{r ox-35days-model-1, results='hold'}
+data_ox_35days = data_expanded %>% 
+  filter(Line =="DGRP OX" & Age == "35 days")
+
+model1 = coxme(Surv(Time_to_death, Censor) ~ 
+                         Treatment + Sex + (1|Internal_replicate) + (1|Cage_ID), 
+                       data = data_ox_35days)
+summary(model1) 
+```
+<br><br>
+
+### Model 2
+
+```{r ox-35days-model-2, results='hold'}
+model2 = coxme(Surv(Time_to_death, Censor) ~ 
+                         Treatment + Sex + Treatment*Sex + (1|Internal_replicate) + (1|Cage_ID), 
+                       data = data_ox_35days)
+summary(model2)
+```
+<br><br>
+
+### Likelihood Ratio Test
+
+```{r ox-35days-lrt, results='hold'}
+test1 = anova(model1, model2)
+print(test1)
+```
+<br><br>
+
+### Best Model
+
+```{r ox-35days-best-model, results='hold'}
+best_model = model1
+model_formula = str_replace_all(deparse(formula(best_model), 
+                                        width.cutoff = 500), 
+                                c("_" = "\\\\_"))  
+```
+
+<div align="center">
+$`r model_formula`$
+
+<div class = "row">
+<div class = "col-md-6">
+```{r ox-35days-coxme-table, results='hold'}
+coxme_table = extract_coxme_table(best_model)
+coxme_table$beta_lower = confint(best_model)[,1]
+coxme_table$beta_upper = confint(best_model)[,2]
+
+coxme_table = rownames_to_column(coxme_table, "Parameter")
+coxme_table = coxme_table %>%
+  mutate(across(beta:beta_upper, as.numeric)) %>% 
+  add_row(Parameter = "Baseline",
+          beta = 0,
+          se = 0,
+          z = 0,
+          p = 0,
+          beta_lower = 0,
+          beta_upper = 0) %>%
+  mutate(Parameter = as_factor(Parameter) %>%
+           fct_relevel("Baseline"))
+
+tbl_regression(best_model,
+                          exponentiate = FALSE) %>%
+  modify_header(update = c(estimate ~ "**log(HR)**",
+                           label ~ "**Parameter**")) %>%
+  italicize_levels() %>% 
+  as_flex_table() %>% 
+  flextable::set_table_properties(width = .5)
+```
+</div>
+
+<div class = "col-sm-6">
+```{r ox-35days-coxme-plot, results='hold', fig.dim=c(3,5), out.width="80%"}
+model_plot = ggplot(coxme_table,
+        aes(x = Parameter,
+            y = beta)) +
+   geom_errorbar(aes(ymin = beta_lower,
+                     ymax = beta_upper),
+                 col = "black",
+                 width = 0.17,
+                 size = 0.5,
+                 show.legend = FALSE) +
+   geom_point(stat = "identity",
+              show.legend = FALSE,
+              size = 1.5,
+              #position = position_dodge(0.2)
+              ) +
+   geom_hline(yintercept = 0,
+              colour = "red",
+              linetype = 4) +
+   scale_color_manual(values = c("red","blue","green","orange","black")) +
+   scale_x_discrete(expand = c(0.1, 0)) +
+   scale_y_continuous("log(HR) (95 % CI)",   
+                        breaks = c(seq(-5, 5, by = 1))) +
+   coord_cartesian(ylim = c(-2, 2), 
+                   expand = TRUE, 
+                   clip = "on") +
+   xlab("") +                                                                    
+   theme_cowplot() +
+   theme(axis.title.y = ggtext::element_markdown(),
+         axis.text.x = element_text(angle = 45,
+                                    hjust = 1,
+                                    size = 14),
+         aspect.ratio = 2)    
+
+print(model_plot)
+```
+</div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
